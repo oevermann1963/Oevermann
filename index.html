@@ -398,16 +398,71 @@ function resetOutputs() {
   document.getElementById("filename").value = "";
 }
 
+// Ordnet einen gesprochenen Abschnitt einer Kategorie zu (Heuristik, ohne KI).
+// Reihenfolge = Priorität: Termin > To-do > Kontakt > Idee > Notiz.
+function classify(text) {
+  const t = " " + text.toLowerCase().replace(/\s+/g, " ") + " ";
+  const any = (arr) => arr.some(w => t.includes(w));
+
+  // Datum / Uhrzeit → Termin
+  const timeRe = /\b\d{1,2}([:.]\d{2})?\s*uhr\b|\b\d{1,2}[:.]\d{2}\b|\b\d{1,2}\.\d{1,2}\.?(\d{2,4})?\b|\bkw\s?\d{1,2}\b/;
+  const terminWords = ["montag","dienstag","mittwoch","donnerstag","freitag","samstag","sonntag",
+    " morgen "," übermorgen "," heute "," gestern ","nächste woche","nächsten ","kommende woche",
+    "termin","besichtigung","uhr","wochenende","monat","januar","februar","märz","april"," mai ",
+    "juni","juli","august","september","oktober","november","dezember"];
+  if (any(terminWords) || timeRe.test(t)) return "termin";
+
+  // Aufgaben → To-do
+  const todoWords = ["muss noch","müssen ","muss ","nicht vergessen","erledig","aufgabe","to-do","to do","todo",
+    "anrufen","zurückrufen","rückruf","besorg","kaufen","prüf","checke","klären","nachfrag","nachhaken",
+    "schicken","senden","mailen","mail schreiben","organisier","vereinbar","beauftrag","kümmern","kümmere",
+    "einhol","abhol","bezahl","überweis","beantrag","kündig","unterschreib","nachsehen","nachschauen"];
+  if (any(todoWords)) return "todo";
+
+  // Personen / Kontakte
+  const kontaktWords = ["herr ","frau ","anrufen bei","kontakt","telefon","handynummer","nummer von","mobil","e-mail von","+49"];
+  if (any(kontaktWords) || /\b0\d{2,}[\s/\-]?\d{3,}/.test(t)) return "kontakt";
+
+  // Ideen
+  const ideeWords = ["idee","vielleicht","man könnte","könnte man","könnten wir","sollten wir","überleg",
+    "eventuell","evtl","wäre gut","wäre schön","wäre interessant","gedanke","angedacht"];
+  if (any(ideeWords)) return "idee";
+
+  return "notiz";
+}
+
 function buildStructured() {
   const title = makeTitle();
   const now = new Date();
   const datum = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
   const uhrzeit = pad(now.getHours()) + ":" + pad(now.getMinutes());
 
+  // Abschnitte in fester Reihenfolge; nur nicht-leere werden ausgegeben.
+  const SECTIONS = [
+    { key: "todo",    head: "## ✅ To-dos",   render: s => "- [ ] " + s },
+    { key: "termin",  head: "## 📅 Termine",  render: s => "- " + s },
+    { key: "kontakt", head: "## 👤 Kontakte", render: s => "- " + s },
+    { key: "idee",    head: "## 💡 Ideen",    render: s => "- " + s },
+    { key: "notiz",   head: "## 📝 Notizen",  render: s => "- " + s },
+  ];
+  const buckets = { todo: [], termin: [], kontakt: [], idee: [], notiz: [] };
+  segments.forEach(seg => { buckets[classify(seg)].push(tidy(seg)); });
+
   let body;
-  if (segments.length === 0) body = "_(Kein Text erkannt.)_";
-  else if (segments.length === 1) body = tidy(segments[0]);
-  else body = segments.map(seg => "- " + tidy(seg)).join("\n");
+  if (segments.length === 0) {
+    body = "_(Kein Text erkannt.)_";
+  } else {
+    body = SECTIONS
+      .filter(sec => buckets[sec.key].length > 0)
+      .map(sec => sec.head + "\n" + buckets[sec.key].map(sec.render).join("\n"))
+      .join("\n\n");
+  }
+
+  const todoCount = buckets.todo.length;
+  const terminCount = buckets.termin.length;
+  const extraFm =
+    (todoCount ? `offene_todos: ${todoCount}\n` : "") +
+    (terminCount ? `termine: ${terminCount}\n` : "");
 
   const md =
 `---
@@ -415,7 +470,7 @@ titel: ${title}
 datum: ${datum}
 uhrzeit: ${uhrzeit}
 quelle: Sprachnotiz
----
+${extraFm}---
 
 # ${title}
 
@@ -427,7 +482,7 @@ ${body}
   document.getElementById("md").value = md;
   document.getElementById("filename").value =
     `${datum}_${pad(now.getHours())}${pad(now.getMinutes())}_${slugify(title)}.md`;
-  setStatus("Notiz strukturiert. Du kannst sie anpassen und dann speichern.", "ok");
+  setStatus("Notiz strukturiert (" + segments.length + " Einträge). Du kannst sie anpassen und dann speichern.", "ok");
 }
 
 document.getElementById("restructureBtn").addEventListener("click", () => {
