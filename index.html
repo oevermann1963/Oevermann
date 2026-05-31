@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oevermann Group · Sprachnotiz</title>
+
+<!-- PWA / Home-Bildschirm -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f172a">
+
+<!-- iOS: Name & Icon auf dem Home-Bildschirm -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Oevermann Group">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<!-- Allgemeines Browser-Icon -->
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #273449;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent-2: #0ea5e9;
+    --rec: #ef4444;
+    --ok: #22c55e;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 0.95rem; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 18px;
+  }
+  .card h2 { font-size: 1.05rem; margin: 0 0 14px; color: var(--accent); }
+
+  .rec-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    transition: transform .05s ease, background .15s ease, opacity .15s ease;
+  }
+  button:hover { background: #31425c; }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--accent-2); border-color: var(--accent-2); color: #04141f; font-weight: 600; }
+  button.primary:hover { background: var(--accent); }
+
+  .mic-btn {
+    width: 92px; height: 92px; border-radius: 50%;
+    background: var(--rec); border: none; color: #fff;
+    font-size: 2rem; display: grid; place-items: center;
+    box-shadow: 0 6px 22px rgba(239,68,68,.35);
+  }
+  .mic-btn:hover { background: #dc2626; }
+  .mic-btn.recording { animation: pulse 1.4s infinite; background: #b91c1c; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239,68,68,.55); }
+    70% { box-shadow: 0 0 0 20px rgba(239,68,68,0); }
+    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  }
+  .rec-info { display: flex; flex-direction: column; gap: 4px; }
+  .rec-state { font-weight: 600; }
+  .timer { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .9rem; }
+
+  .live {
+    margin-top: 16px; min-height: 60px;
+    background: #0b1220; border: 1px dashed var(--border); border-radius: 10px;
+    padding: 12px 14px; color: var(--text); font-size: .98rem;
+  }
+  .live .interim { color: var(--muted); font-style: italic; }
+  .live.empty { color: var(--muted); }
+
+  label { display: block; font-size: .85rem; color: var(--muted); margin: 0 0 6px; }
+  input[type=text], textarea {
+    width: 100%; font: inherit; color: var(--text);
+    background: #0b1220; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; resize: vertical;
+  }
+  textarea { min-height: 240px; font-family: "Cascadia Code", "Consolas", monospace; font-size: .9rem; }
+  #dictate { min-height: 140px; font-family: inherit; font-size: 1.05rem; }
+  .field { margin-bottom: 14px; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+
+  .status { margin-top: 12px; font-size: .9rem; min-height: 1.2em; }
+  .status.ok { color: var(--ok); }
+  .status.err { color: #f87171; }
+  .status.info { color: var(--muted); }
+
+  .folder { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+  .folder b { color: var(--text); }
+
+  details { margin-top: 14px; }
+  summary { cursor: pointer; color: var(--accent); font-size: .9rem; }
+  .hint { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+  code { background: #0b1220; padding: 1px 6px; border-radius: 5px; }
+
+  .ios-note {
+    background: #0b1220; border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 12px 14px; font-size: .9rem; color: var(--muted); margin-bottom: 14px;
+  }
+  .ios-note b { color: var(--text); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎙️ Sprachnotiz → Markdown</h1>
+  <p class="sub">Sprechen → automatisch transkribieren → strukturieren → als <code>.md</code>-Datei ablegen.</p>
+
+  <!-- 1a. Aufnahme (Desktop: Web Speech API) -->
+  <div class="card" id="cardSpeech">
+    <h2>1 · Aufnahme</h2>
+    <div class="rec-row">
+      <button id="micBtn" class="mic-btn" title="Aufnahme starten / stoppen">🎤</button>
+      <div class="rec-info">
+        <span id="recState" class="rec-state">Bereit</span>
+        <span id="timer" class="timer">00:00</span>
+      </div>
+      <button id="clearBtn">Zurücksetzen</button>
+    </div>
+    <div id="live" class="live empty">Hier erscheint dein gesprochener Text in Echtzeit …</div>
+  </div>
+
+  <!-- 1b. Diktat (iPhone/iPad: System-Diktat) -->
+  <div class="card hidden" id="cardDictate">
+    <h2>1 · Diktat</h2>
+    <div class="ios-note">
+      <b>So geht's auf iPhone/iPad:</b> Tippe in das Feld unten, dann auf die
+      <b>🎤-Taste deiner Bildschirmtastatur</b> und sprich. Dein Text wird live eingetippt.
+      Mache zwischen Punkten eine kurze Pause oder beginne mit einer neuen Zeile —
+      daraus entstehen die Stichpunkte. Danach unten auf „Strukturieren“.
+    </div>
+    <div class="field">
+      <label for="dictate">Diktat-Feld</label>
+      <textarea id="dictate" placeholder="Hier hinein diktieren (🎤 auf der Tastatur) …"></textarea>
+    </div>
+    <div class="btn-row">
+      <button id="dictateStructureBtn" class="primary">✓ Strukturieren</button>
+      <button id="dictateClearBtn">Zurücksetzen</button>
+    </div>
+  </div>
+
+  <!-- 2. Strukturierte Notiz -->
+  <div class="card">
+    <h2>2 · Strukturierte Notiz (bearbeitbar)</h2>
+    <div class="field">
+      <label for="title">Titel</label>
+      <input type="text" id="title" placeholder="Titel der Notiz">
+    </div>
+    <div class="field">
+      <label for="md">Markdown-Inhalt</label>
+      <textarea id="md" placeholder="Nach der Aufnahme / dem Diktat erscheint hier die strukturierte Notiz …"></textarea>
+    </div>
+    <button id="restructureBtn">↻ Neu strukturieren</button>
+  </div>
+
+  <!-- 3. Speichern -->
+  <div class="card">
+    <h2>3 · Speichern</h2>
+    <div class="field">
+      <label for="filename">Dateiname</label>
+      <input type="text" id="filename" placeholder="2026-05-31_1432_meine-notiz.md">
+    </div>
+    <div class="btn-row">
+      <button id="folderBtn">📁 Zielordner wählen</button>
+      <button id="saveBtn" class="primary">💾 Im Ordner speichern</button>
+      <button id="shareBtn">📤 Teilen / In Dateien sichern</button>
+      <button id="downloadBtn">⬇︎ Download</button>
+    </div>
+    <div id="folderInfo" class="folder">Noch kein Ordner gewählt.</div>
+    <div id="status" class="status"></div>
+  </div>
+
+  <details>
+    <summary>Hinweise & Fehlerbehebung</summary>
+    <div class="hint" id="hintDesktop">
+      <b>Am PC (Chrome / Edge):</b><br>
+      • Mikrofon-Knopf drücken, sprechen, erneut drücken zum Stoppen.<br>
+      • Beim ersten Speichern den Ordner „MD Dateien“ wählen und Schreibrechte erlauben – wird gemerkt.<br>
+      • Jede Sprechpause erzeugt automatisch einen Stichpunkt.
+    </div>
+    <div class="hint hidden" id="hintIOS">
+      <b>Auf iPhone / iPad (Safari):</b><br>
+      • Echtzeit-Spracherkennung im Browser gibt es auf iOS nicht – darum nutzen wir das <b>System-Diktat</b>: ins Diktat-Feld tippen und die 🎤-Taste der Tastatur verwenden.<br>
+      • Speichern: „📤 Teilen / In Dateien sichern“ → dann <b>„In Dateien sichern“</b> und den OneDrive-Ordner „MD Dateien“ wählen, oder direkt die <b>OneDrive-App</b>. So landet die Notiz im selben Ordner wie am PC.<br>
+      • Tipp: Über das Teilen-Symbol in Safari kannst du die Seite „<b>Zum Home-Bildschirm</b>“ hinzufügen – dann startet sie wie eine App.
+    </div>
+  </details>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- Plattform-/Fähigkeitserkennung ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const hasSpeech = !!SR && !isIOS;          // iOS-WebKit liefert keine brauchbare Erkennung
+const hasFS = !!window.showDirectoryPicker;
+const hasShare = !!(navigator.canShare);
+
+/* ---------- Status-Helfer ---------- */
+const statusEl = document.getElementById("status");
+function setStatus(msg, type = "info") {
+  statusEl.textContent = msg;
+  statusEl.className = "status " + type;
+}
+function escapeHtml(s) {
+  return s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+
+/* ---------- UI je nach Plattform einblenden ---------- */
+const cardSpeech  = document.getElementById("cardSpeech");
+const cardDictate = document.getElementById("cardDictate");
+const folderBtn   = document.getElementById("folderBtn");
+const saveBtn     = document.getElementById("saveBtn");
+const shareBtn    = document.getElementById("shareBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+
+if (hasSpeech) {
+  cardSpeech.classList.remove("hidden");
+  cardDictate.classList.add("hidden");
+  document.getElementById("hintDesktop").classList.remove("hidden");
+  document.getElementById("hintIOS").classList.add("hidden");
+} else {
+  // iOS oder Browser ohne Web Speech API → Diktat-Variante
+  cardSpeech.classList.add("hidden");
+  cardDictate.classList.remove("hidden");
+  document.getElementById("hintDesktop").classList.add("hidden");
+  document.getElementById("hintIOS").classList.remove("hidden");
+}
+
+// Speicher-Buttons je nach Möglichkeit
+if (!hasFS) { folderBtn.classList.add("hidden"); saveBtn.classList.add("hidden"); }
+if (!hasShare) { shareBtn.classList.add("hidden"); }
+
+/* ---------- gemeinsame Datenbasis ---------- */
+let segments = [];   // jede Sprechpause / Zeile = ein Segment
+
+/* ============================================================
+   A) DESKTOP: Web Speech API
+   ============================================================ */
+if (hasSpeech) {
+  let recognition = null, recording = false, interimText = "", timerInt = null, startTs = 0;
+  const micBtn   = document.getElementById("micBtn");
+  const recState = document.getElementById("recState");
+  const timerEl  = document.getElementById("timer");
+  const liveEl   = document.getElementById("live");
+
+  const fmtTime = ms => {
+    const s = Math.floor(ms / 1000);
+    return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  };
+  const renderLive = () => {
+    const finals = segments.join(" ");
+    if (!finals && !interimText) {
+      liveEl.className = "live empty";
+      liveEl.textContent = "Hier erscheint dein gesprochener Text in Echtzeit …";
+      return;
+    }
+    liveEl.className = "live";
+    liveEl.innerHTML = escapeHtml(finals) +
+      (interimText ? ' <span class="interim">' + escapeHtml(interimText) + "</span>" : "");
+  };
+
+  const startRecognition = () => {
+    recognition = new SR();
+    recognition.lang = "de-DE";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (e) => {
+      interimText = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        const txt = res[0].transcript.trim();
+        if (!txt) continue;
+        if (res.isFinal) segments.push(txt);
+        else interimText += txt + " ";
+      }
+      renderLive();
+    };
+    recognition.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        setStatus("Mikrofon-Zugriff verweigert. Bitte im Browser erlauben.", "err");
+        stopRecording();
+      }
+    };
+    recognition.onend = () => { if (recording) { try { recognition.start(); } catch (_) {} } };
+    try { recognition.start(); } catch (_) {}
+  };
+
+  const startRecording = () => {
+    segments = []; interimText = ""; recording = true; startTs = Date.now();
+    micBtn.classList.add("recording"); micBtn.textContent = "⏹";
+    recState.textContent = "Aufnahme läuft …";
+    renderLive();
+    setStatus("Sprich jetzt. Pausen werden als Stichpunkte erkannt.", "info");
+    timerInt = setInterval(() => { timerEl.textContent = fmtTime(Date.now() - startTs); }, 250);
+    startRecognition();
+  };
+  const stopRecording = () => {
+    recording = false;
+    micBtn.classList.remove("recording"); micBtn.textContent = "🎤";
+    recState.textContent = "Verarbeite …";
+    clearInterval(timerInt);
+    if (recognition) { try { recognition.stop(); } catch (_) {} }
+    setTimeout(() => {
+      interimText = ""; renderLive();
+      recState.textContent = "Fertig";
+      buildStructured();
+    }, 400);
+  };
+
+  micBtn.addEventListener("click", () => recording ? stopRecording() : startRecording());
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    segments = []; interimText = ""; renderLive();
+    resetOutputs();
+    recState.textContent = "Bereit"; timerEl.textContent = "00:00";
+    setStatus("Zurückgesetzt.", "info");
+  });
+}
+
+/* ============================================================
+   B) iOS / Fallback: System-Diktat im Textfeld
+   ============================================================ */
+if (!hasSpeech) {
+  const dictate = document.getElementById("dictate");
+  document.getElementById("dictateStructureBtn").addEventListener("click", () => {
+    const raw = dictate.value.trim();
+    if (!raw) { setStatus("Bitte zuerst etwas ins Diktat-Feld sprechen/schreiben.", "err"); return; }
+    // Segmente: zuerst nach Zeilen, sonst nach Satzzeichen aufteilen
+    let parts = raw.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    if (parts.length <= 1) {
+      parts = raw.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+    }
+    segments = parts;
+    buildStructured();
+  });
+  document.getElementById("dictateClearBtn").addEventListener("click", () => {
+    dictate.value = ""; segments = []; resetOutputs();
+    setStatus("Zurückgesetzt.", "info");
+  });
+}
+
+/* ============================================================
+   Gemeinsame Strukturierung
+   ============================================================ */
+function tidy(s) {
+  s = s.trim().replace(/\s+/g, " ");
+  if (!s) return s;
+  s = s.charAt(0).toUpperCase() + s.slice(1);
+  if (!/[.!?:]$/.test(s)) s += ".";
+  return s;
+}
+function makeTitle() {
+  const first = (segments[0] || "").trim();
+  if (!first) return "Sprachnotiz";
+  let t = first.replace(/[.!?,;:]+$/, "");
+  const words = t.split(/\s+/).slice(0, 8).join(" ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+function slugify(s) {
+  return s.toLowerCase()
+    .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50) || "notiz";
+}
+const pad = n => String(n).padStart(2, "0");
+
+function resetOutputs() {
+  document.getElementById("title").value = "";
+  document.getElementById("md").value = "";
+  document.getElementById("filename").value = "";
+}
+
+function buildStructured() {
+  const title = makeTitle();
+  const now = new Date();
+  const datum = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
+  const uhrzeit = pad(now.getHours()) + ":" + pad(now.getMinutes());
+
+  let body;
+  if (segments.length === 0) body = "_(Kein Text erkannt.)_";
+  else if (segments.length === 1) body = tidy(segments[0]);
+  else body = segments.map(seg => "- " + tidy(seg)).join("\n");
+
+  const md =
+`---
+titel: ${title}
+datum: ${datum}
+uhrzeit: ${uhrzeit}
+quelle: Sprachnotiz
+---
+
+# ${title}
+
+> Erstellt am ${datum} um ${uhrzeit} Uhr
+
+${body}
+`;
+  document.getElementById("title").value = title;
+  document.getElementById("md").value = md;
+  document.getElementById("filename").value =
+    `${datum}_${pad(now.getHours())}${pad(now.getMinutes())}_${slugify(title)}.md`;
+  setStatus("Notiz strukturiert. Du kannst sie anpassen und dann speichern.", "ok");
+}
+
+document.getElementById("restructureBtn").addEventListener("click", () => {
+  if (segments.length === 0) { setStatus("Noch kein Text vorhanden.", "err"); return; }
+  buildStructured();
+});
+
+document.getElementById("title").addEventListener("input", (e) => {
+  const t = e.target.value;
+  const ta = document.getElementById("md");
+  ta.value = ta.value.replace(/^titel: .*$/m, "titel: " + t).replace(/^# .*$/m, "# " + t);
+});
+
+/* ============================================================
+   Speichern: Datei-Helfer
+   ============================================================ */
+function getContentAndName() {
+  const content = document.getElementById("md").value;
+  let filename = document.getElementById("filename").value.trim() || "sprachnotiz.md";
+  if (!filename.endsWith(".md")) filename += ".md";
+  return { content, filename };
+}
+
+/* --- Variante 1: File System Access API (Desktop) --- */
+let dirHandle = null;
+const DB_NAME = "sprachnotiz-db", STORE = "handles";
+function idb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(k, v) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).put(v, k);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGet(k) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, "readonly");
+    const r = tx.objectStore(STORE).get(k);
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+const folderInfo = document.getElementById("folderInfo");
+function showFolder() {
+  folderInfo.innerHTML = dirHandle
+    ? 'Zielordner: <b>' + escapeHtml(dirHandle.name) + "</b>"
+    : "Noch kein Ordner gewählt.";
+}
+async function verifyPermission(handle) {
+  const opts = { mode: "readwrite" };
+  if ((await handle.queryPermission(opts)) === "granted") return true;
+  if ((await handle.requestPermission(opts)) === "granted") return true;
+  return false;
+}
+
+if (hasFS) {
+  folderBtn.addEventListener("click", async () => {
+    try {
+      dirHandle = await window.showDirectoryPicker({ id: "md-dateien", mode: "readwrite" });
+      await idbSet("dir", dirHandle);
+      showFolder();
+      setStatus("Zielordner gemerkt: " + dirHandle.name, "ok");
+    } catch (e) {
+      if (e.name !== "AbortError") setStatus("Ordnerauswahl fehlgeschlagen.", "err");
+    }
+  });
+  saveBtn.addEventListener("click", async () => {
+    const { content, filename } = getContentAndName();
+    if (!content.trim()) { setStatus("Kein Inhalt zum Speichern.", "err"); return; }
+    try {
+      if (!dirHandle) {
+        dirHandle = await window.showDirectoryPicker({ id: "md-dateien", mode: "readwrite" });
+        await idbSet("dir", dirHandle); showFolder();
+      }
+      if (!(await verifyPermission(dirHandle))) { setStatus("Keine Schreibberechtigung.", "err"); return; }
+      const fh = await dirHandle.getFileHandle(filename, { create: true });
+      const w = await fh.createWritable();
+      await w.write(content); await w.close();
+      setStatus("✓ Gespeichert als „" + filename + "“ in „" + dirHandle.name + "“.", "ok");
+    } catch (e) {
+      if (e.name === "AbortError") setStatus("Speichern abgebrochen.", "info");
+      else setStatus("Fehler: " + e.message, "err");
+    }
+  });
+  (async () => {
+    try {
+      const saved = await idbGet("dir");
+      if (saved) { dirHandle = saved; showFolder();
+        setStatus("Gemerkter Ordner gefunden – beim ersten Speichern ggf. bestätigen.", "info"); }
+    } catch (_) {}
+  })();
+}
+
+/* --- Variante 2: Teilen (iPhone/iPad) --- */
+if (hasShare) {
+  shareBtn.addEventListener("click", async () => {
+    const { content, filename } = getContentAndName();
+    if (!content.trim()) { setStatus("Kein Inhalt zum Speichern.", "err"); return; }
+    const file = new File([content], filename, { type: "text/markdown" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+        setStatus("Teilen-Menü geöffnet – wähle „In Dateien sichern“ oder OneDrive.", "ok");
+      } else {
+        // Manche iOS-Versionen teilen .md nicht als Datei → Text teilen
+        await navigator.share({ title: filename, text: content });
+        setStatus("Inhalt geteilt (als Text).", "ok");
+      }
+    } catch (e) {
+      if (e.name !== "AbortError") setStatus("Teilen fehlgeschlagen – nutze „Download“.", "err");
+    }
+  });
+}
+
+/* --- Variante 3: Download (überall) --- */
+downloadBtn.addEventListener("click", () => {
+  const { content, filename } = getContentAndName();
+  if (!content.trim()) { setStatus("Kein Inhalt zum Speichern.", "err"); return; }
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  setStatus("Download/Export gestartet: " + filename, "ok");
+});
+</script>
+</body>
+</html>
